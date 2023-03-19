@@ -1,5 +1,7 @@
+from django.contrib.auth import logout, login
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.views import LoginView
 from django.core.paginator import Paginator
 from django.http import HttpResponse, HttpResponseNotFound, Http404
 from django.shortcuts import render, redirect, get_object_or_404
@@ -25,16 +27,6 @@ class WomenHome(DataMixin, ListView):
     def get_queryset(self):
         return Women.objects.filter(is_published=True)
 
-# def index(request):
-#     posts = Women.objects.all()
-#     context = {
-#         'posts': posts,
-#         'menu': menu,
-#         'title': 'Главная страница',
-#         'cat_selected': 0
-#     }
-#     return render(request, 'women/index.html', context=context)
-
 
 @login_required
 def about(request):
@@ -59,24 +51,13 @@ class AddPage(LoginRequiredMixin, DataMixin, CreateView):
         return dict(list(context.items()) + list(c_def.items()))
 
 
-# def addpage(request):
-#     if request.method == 'POST':
-#         form = AddPostForm(request.POST, request.FILES)
-#         if form.is_valid(): # корректно ли данные заполнены и переданы
-#             form.save()
-#             return redirect('home')
-#
-#     else:
-#         form = AddPostForm()
-#     return render(request, 'women/addpage.html', {'form': form, 'menu': menu, 'title': 'Добавление статьи'})
-
 
 def contact(request):
     return HttpResponse('Связаться со мной.')
 
 
-def login(request):
-    return HttpResponse('Авторизация')
+# def login(request):
+#     return HttpResponse('Авторизация')
 
 
 class ShowPost(DataMixin, DetailView):
@@ -118,3 +99,27 @@ class RegisterUser(DataMixin, CreateView):
         c_def = self.get_user_context(title='Регистрация')
         return dict(list(context.items()) + list(c_def.items()))
 
+    #автоматически авторизация пользователя при его регистрации
+    def form_valid(self, form):
+        user = form.save()
+        login(self.request, user)
+        return redirect('home')
+
+
+class LoginUser(DataMixin, LoginView):
+    form_class = LoginUserForm #отдельно прописанная форма для логина пользователя
+    template_name = 'women/login.html'
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data()
+        c_def = self.get_user_context(title='Авторизация')
+        return dict(list(context.items()) + list(c_def.items()))
+
+    # def get_success_url(self):
+    #     # автоматически при успешном логине перенаправляет на главную страницу
+    #     return reverse_lazy('home')
+
+
+def logout_user(request):
+    logout(request)
+    return redirect('login')
